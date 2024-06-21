@@ -1,15 +1,42 @@
+"""
+File: backend.py
+Author: RyanDavitt
+Date: 06-21-2024
+
+Description: Implements the MVP as an operational program through the command prompt as an interface.
+
+The backend is, as the filename suggests, the backend of the program, implementing all the behind the scenes with an
+ugly interface (the command prompt). It is possible to run all basic functions of the PiSound program by running this
+file and controlling through the command prompt, given that the global variable run_in_cmd remains True (other file's
+functions, such as the GUI, that call on file must set run_in_cmd to False in order to not get stuck in the command
+prompt inputs and loops that were built with said command prompt inputs in mind).
+"""
 import json
 import pygame
 import threading
 import time
 from pygame import mixer_music as mix
-# from raspgui import run
 
-run_in_cmd = True
+#
+# JSON format is: profile = [{"sound": "sounds/...", "text": "Name", "img": "imgs/...", "vol": 0.25, ", "start": 0.0,
+#                             "end": 0.0, "row": 0, "col": 0}, {"sound":...}]
+# Key descriptions: sound = sound filename (str type path, adjusted from "[file]" to "sounds/[file]")
+#                   text = sound name to be displayed (str type)
+#                   img = image to be displayed by GUI (str type path, adjusted from "[file]" to
+#                         "imgs/[file]". Not implemented yet)
+#                   vol = volume to play at. Inputted at percent (25, 62, ...),
+#                         stored as decimal value (float type) of percent
+#                   start = where to place playhead at sound playback start in seconds (float type)
+#                   end = where to stop sound playback in seconds (float type)
+#                   row = which row to place slot in GUI (int type, -1 is default for no GUI display)
+#                   col = which column to place slot in GUI (int type, -1 is default for no GUI display)
+# Test path: C:\Users\Ryan\PycharmProjects\RandomProjects\PiSound\sounds\Carl-spacito.mp3
+
+run_in_cmd = True           # When False, indicates running with GUI. Avoid cmd prmpt inputs and input loops
 file = "profile.json"
 profile = []
-# JSON format is: profile = [{"sound": "sounds/...", "text": "Name", "img": "imgs/...", "vol": 100, ", "start": 0, "end": 0}, {"sound":...}]
-# Test path: C:\Users\Ryan\PycharmProjects\RandomProjects\PiSound\sounds\Carl-spacito.mp3
+
+default_vol = 25
 
 
 def get_profile():
@@ -29,11 +56,11 @@ def update_json():
     fp.close()
 
 
-def add_sound():
+def add_sound(sound="", text="", vol=default_vol, start=0.0, end=0.0, row=-1, col=-1):
     if run_in_cmd:
         sound = input("Input sound filename: ")
         text = input("Input sound name: ")
-        vol = input("Input sound volume (out of 100, default 25): ")
+        vol = input(f"Input sound volume (out of 100, default {default_vol}): ")
         start = input("Input start time (seconds, default 0.0): ")
         end = input("Input end time (seconds, default 0.0): ")
 
@@ -50,7 +77,8 @@ def add_sound():
     else:
         end = 0.0
 
-    new_dict = {"sound": "sounds\\" + sound, "text": text, "volume": vol, "start": start, "end": end}
+    new_dict = {"sound": "sounds\\" + sound, "text": text, "volume": vol / 100, "start": start, "end": end, "row": row,
+                "col": col}
 
     return new_dict
 
@@ -59,7 +87,7 @@ def play_sound(sel: dict):
     if run_in_cmd:
         print("Now playing " + sel["text"] + "...")
 
-    mix.set_volume(int(sel["volume"]) / 100)
+    mix.set_volume(int(sel["volume"]))
     mix.load(sel["sound"])
     mix.play()
     mix.set_pos(float(sel["start"]))
@@ -71,7 +99,7 @@ def stop_sound():
     mix.stop()
 
 
-def edit_sound(num: int):
+def edit_sound(num: int, sound="", text="", vol=-1, start=-1, end=-1, row=-1, col=-1):
     global profile
     sel = profile[num]
     cont_edit = True
@@ -88,29 +116,36 @@ def edit_sound(num: int):
             sel.update({"sound": "sounds\\" + sound})
         if text != "":
             sel.update({"text": text})
-        if vol != "":
-            sel.update({"volume": int(vol)})
-        if start != "":
+        if vol != "" and vol != -1:
+            sel.update({"volume": int(vol) / 100})
+        if start != "" and start != -1:
             sel.update({"start": float(start)})
-        if end != "":
+        if end != "" and end != -1:
             sel.update({"end": float(end)})
+        if row != -1:
+            sel.update({"row": row})
+        if col != -1:
+            sel.update({"col": col})
 
-        while 1:
-            if run_in_cmd:
+        if run_in_cmd:
+            while 1:
                 cmd = input("Play Changes (P), Save (S), Redo Changes (R), or Discard Changes (D): ").upper()
 
-            match cmd:
-                case "P":
-                    play_sound(sel)
-                case "S":
-                    cont_edit = False
-                    break
-                case "R":
-                    break
-                case "D":
-                    return
-                case _:
-                    print("No valid command detected...")
+                match cmd:
+                    case "P":
+                        play_sound(sel)
+                    case "S":
+                        cont_edit = False
+                        break
+                    case "R":
+                        break
+                    case "D":
+                        return
+                    case _:
+                        print("No valid command detected...")
+
+        else:
+            cont_edit = False
 
     profile[num] = sel
     update_json()
@@ -120,18 +155,20 @@ def delete_sound(num: int):
     global profile
 
     if run_in_cmd:
-        cmd = input("Are you sure you want to delete \"" + profile[num]["text"] + "\" [Y/N]? ")
+        cmd = input("Are you sure you want to delete \"" + profile[num]["text"] + "\" [Y/N]? ").upper()
     else:
-        cmd = "N"
+        cmd = "Y"
 
     match cmd:
         case "Y":
             last_text = profile[num]["text"]
             profile.remove(profile[num])
             update_json()
-            print(last_text + "has been deleted.")
+            if run_in_cmd:
+                print(last_text + "has been deleted.")
         case _:
-            print(profile[num]["text"] + "will not be deleted.")
+            if run_in_cmd:
+                print(profile[num]["text"] + "will not be deleted.")
 
 
 def back_setup():
@@ -141,7 +178,7 @@ def back_setup():
 
     try:
         fp = open(file, "r")
-    except:
+    except OSError:
         is_new_profile = True
         fp = open(file, "x")
         fp.close()
@@ -151,17 +188,18 @@ def back_setup():
     else:
         try:
             profile = json.load(fp)
-        except:
+        except OSError:
             profile = []
         fp.close()
 
-    keys = len(profile)
 
-
-def main():
+def back_main():
     global profile
     is_running = True
     mode = "M"                          # Modes: "M": Main, "E": Edit Mode, "T": Trash Mode
+
+    if run_in_cmd:
+        back_setup()
 
     while is_running:
         # Runs /every/ time to keep values updated
@@ -171,7 +209,8 @@ def main():
             # Edit Mode
             case "E":
                 if run_in_cmd:
-                    cmd = input("Select sound to edit (numeric), return to Play Mode (P), enter Trash Mode (T): ")
+                    cmd = input("Select sound to edit (numeric), return to Play Mode (P), enter Trash Mode (T): ")\
+                                .upper()
                 else:
                     cmd = "P"
 
@@ -183,8 +222,6 @@ def main():
                         if run_in_cmd:
                             print("No such sound exists...")
                     continue
-
-                cmd = cmd.upper()
 
                 match cmd:              # Mode changer
                     case "P":
@@ -198,7 +235,8 @@ def main():
             # Trash Mode
             case "T":
                 if run_in_cmd:
-                    cmd = input("Select sound to delete (numeric), return to Edit Mode (E), enter Play Mode (P): ")
+                    cmd = input("Select sound to delete (numeric), return to Edit Mode (E), enter Play Mode (P): ")\
+                                .upper()
                 else:
                     cmd = "E"
 
@@ -211,8 +249,6 @@ def main():
                             print("No such sound exists...")
                     continue
 
-                cmd = cmd.upper()
-
                 match cmd:              # Mode changer
                     case "E":
                         mode = "E"
@@ -224,8 +260,8 @@ def main():
 
             case _:  # Main (Play) Mode
                 if run_in_cmd:
-                    cmd = input("Select sound to play (numeric), stop playing sound (S), enter Edit Mode (E), Add Sound\
-(A), or Quit (Q): ")
+                    cmd = input("Select sound to play (numeric), stop playing sound (S), enter Edit Mode (E)," +
+                                "Add Sound(A), or Quit (Q): ").upper()
                 else:
                     cmd = "0"
 
@@ -238,8 +274,6 @@ def main():
                         if run_in_cmd:
                             print("No such sound exists...")
                     continue
-
-                cmd = cmd.upper()
 
                 match cmd:
                     case "S":           # Stop playing sound
@@ -260,4 +294,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    back_main()

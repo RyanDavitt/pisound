@@ -13,7 +13,7 @@ slot_collection = []
 class Slot:
     def __init__(self, x, y, pos, profile):
         self.button = ttk.Button(master=root, text=profile[pos]["text"],
-                                command=lambda: play_sound(profile[pos]))
+                                 command=lambda: play_sound(profile[pos]))
         self.button.grid(row=y, column=x, sticky="nsew", padx=5, pady=5)
 
 
@@ -28,7 +28,7 @@ def setup():
 
     # root.attributes("-fullscreen", True)
     root.geometry(f"{window_w}x{window_h}")
-    root.rowconfigure(0, weight=2, minsize=100)
+    root.rowconfigure(0, weight=1, minsize=100)
     for i in range(1, num_slots_h + 1):
         root.rowconfigure(i, weight=1, minsize=100)
     for i in range(num_slots_w):
@@ -36,7 +36,7 @@ def setup():
 
     title = ttk.Label(master=root, text="PiSound", background="grey", anchor="center", justify="center", font="-family Courier -size 32 -weight bold")
     title.grid(row=0, column=int(num_slots_w/2), sticky="nsew")
-    quit_button = ttk.Button(master=root, text="Quit", command=root.destroy)
+    quit_button = ttk.Button(master=root, text="Quit", command=end_program)
     quit_button.grid(row=0, column=0, sticky="nsew")
 
 
@@ -55,6 +55,11 @@ def populate(profile: list):
             x = 0
             y = y + 1
 
+
+def end_program():
+    stop_sound()
+    root.destroy()
+    exit()
 
 
 def run():
