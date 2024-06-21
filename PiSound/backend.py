@@ -3,13 +3,23 @@ import pygame
 import threading
 import time
 from pygame import mixer_music as mix
-from raspgui import run
+# from raspgui import run
 
 run_in_cmd = True
 file = "profile.json"
 profile = []
 # JSON format is: profile = [{"sound": "sounds/...", "text": "Name", "img": "imgs/...", "vol": 100, ", "start": 0, "end": 0}, {"sound":...}]
 # Test path: C:\Users\Ryan\PycharmProjects\RandomProjects\PiSound\sounds\Carl-spacito.mp3
+
+
+def get_profile():
+    return profile
+
+
+def cmd_prmpt_off():
+    global run_in_cmd
+
+    run_in_cmd = False
 
 
 def update_json():
@@ -21,18 +31,31 @@ def update_json():
 
 def add_sound():
     if run_in_cmd:
-        sound = input("Input sound path: ")
+        sound = input("Input sound filename: ")
         text = input("Input sound name: ")
-        vol = input("Input sound volume (out of 100): ")
-        start = input("Input start time (seconds): ")
-        end = input("Input end time (seconds): ")
+        vol = input("Input sound volume (out of 100, default 25): ")
+        start = input("Input start time (seconds, default 0.0): ")
+        end = input("Input end time (seconds, default 0.0): ")
 
-    new_dict = {"sound": sound, "text": text, "volume": vol, "start": start, "end": end}
+    if vol != "":
+        vol = int(vol)
+    else:
+        vol = 50
+    if start != "":
+        start = float(start)
+    else:
+        start = 0.0
+    if end != "":
+        end = float(end)
+    else:
+        end = 0.0
+
+    new_dict = {"sound": "sounds\\" + sound, "text": text, "volume": vol, "start": start, "end": end}
 
     return new_dict
 
 
-def play_sound(sel):
+def play_sound(sel: dict):
     if run_in_cmd:
         print("Now playing " + sel["text"] + "...")
 
@@ -48,21 +71,21 @@ def stop_sound():
     mix.stop()
 
 
-def edit_sound(num):
+def edit_sound(num: int):
     global profile
     sel = profile[num]
     cont_edit = True
 
     while cont_edit:
         if run_in_cmd:
-            sound = input("Input sound path (leave blank for no change): ")
+            sound = input("Input sound filename (leave blank for no change): ")
             text = input("Input sound name (leave blank for no change): ")
             vol = input("Input sound volume (out of 100, leave blank for no change): ")
             start = input("Input start time (seconds, leave blank for no change): ")
             end = input("Input end time (seconds, leave blank for no change): ")
 
         if sound != "":
-            sel.update({"sound": sound})
+            sel.update({"sound": "sounds\\" + sound})
         if text != "":
             sel.update({"text": text})
         if vol != "":
@@ -93,7 +116,7 @@ def edit_sound(num):
     update_json()
 
 
-def delete_sound(num):
+def delete_sound(num: int):
     global profile
 
     if run_in_cmd:
@@ -111,7 +134,7 @@ def delete_sound(num):
             print(profile[num]["text"] + "will not be deleted.")
 
 
-def main():
+def back_setup():
     global profile
     pygame.init()
     is_new_profile = False
@@ -134,6 +157,9 @@ def main():
 
     keys = len(profile)
 
+
+def main():
+    global profile
     is_running = True
     mode = "M"                          # Modes: "M": Main, "E": Edit Mode, "T": Trash Mode
 
