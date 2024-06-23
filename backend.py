@@ -87,16 +87,22 @@ def play_sound(sel: dict):
     if run_in_cmd:
         print("Now playing " + sel["text"] + "...")
 
-    mix.set_volume(int(sel["volume"]))
+    mix.set_volume(float(sel["volume"]))
     mix.load(sel["sound"])
     mix.play()
     mix.set_pos(float(sel["start"]))
     if float(sel["end"]) > 0:
-        threading.Timer(float(sel["end"]) - float(sel["start"]), stop_sound).start()
+        timer = threading.Timer(float(sel["end"]) - float(sel["start"]), lambda: stop_sound(timer))
+        timer.start()
+    else:
+        timer = threading.Timer(0, stop_sound)
+    return timer
 
 
-def stop_sound():
+def stop_sound(timer: threading.Timer):
     mix.stop()
+    if timer is not None:
+        timer.cancel()
 
 
 def edit_sound(num: int, sound="", text="", vol=-1, start=-1, end=-1, row=-1, col=-1):
@@ -171,7 +177,7 @@ def delete_sound(num: int):
                 print(profile[num]["text"] + "will not be deleted.")
 
 
-def back_setup():
+def back_init():
     global profile
     pygame.init()
     is_new_profile = False
@@ -193,10 +199,11 @@ def back_setup():
         fp.close()
 
 
-def back_main():
+def back_main():                        # Used as a model for how the GUI should operate.
     global profile
     is_running = True
     mode = "M"                          # Modes: "M": Main, "E": Edit Mode, "T": Trash Mode
+    timer = threading.Timer(0, stop_sound)
 
     if run_in_cmd:
         back_setup()
@@ -269,7 +276,7 @@ def back_main():
                     num = int(cmd)
                     if num < keys:
                         sel = profile[num]
-                        play_sound(sel)
+                        timer = play_sound(sel)
                     else:
                         if run_in_cmd:
                             print("No such sound exists...")
@@ -277,7 +284,7 @@ def back_main():
 
                 match cmd:
                     case "S":           # Stop playing sound
-                        stop_sound()
+                        stop_sound(timer)
                     case "A":           # Add new sound
                         new_dict = add_sound()
                         profile.append(new_dict)
