@@ -16,6 +16,7 @@ import pygame
 import threading
 import time
 from pygame import mixer_music as mix
+import pygame.mixer as mixer
 
 #
 # JSON format is: profile = [{"sound": "sounds/...", "text": "Name", "img": "imgs/...", "vol": 0.25, ", "start": 0.0,
@@ -80,7 +81,14 @@ def add_sound(sound="", text="", vol=default_vol, start=0.0, end=0.0, row=-1, co
     new_dict = {"sound": "sounds\\" + sound, "text": text, "volume": vol / 100, "start": start, "end": end, "row": row,
                 "col": col}
 
-    return new_dict
+    profile.append(new_dict)
+    update_json()
+
+    return len(profile) - 1, profile
+
+
+def update_bounds(filename):
+    return mixer.Sound(filename).get_length()
 
 
 def play_sound(sel: dict):
@@ -206,7 +214,7 @@ def back_main():                        # Used as a model for how the GUI should
     timer = threading.Timer(0, stop_sound)
 
     if run_in_cmd:
-        back_setup()
+        back_init()
 
     while is_running:
         # Runs /every/ time to keep values updated
@@ -286,9 +294,7 @@ def back_main():                        # Used as a model for how the GUI should
                     case "S":           # Stop playing sound
                         stop_sound(timer)
                     case "A":           # Add new sound
-                        new_dict = add_sound()
-                        profile.append(new_dict)
-                        update_json()
+                        add_sound()
                     case "E":           # Mode changer
                         mode = "E"
                     case "Q":           # Quit
