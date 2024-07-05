@@ -14,6 +14,7 @@ prompt inputs and loops that were built with said command prompt inputs in mind)
 import json
 import pygame
 import threading
+import os
 import time
 from pygame import mixer_music as mix
 import pygame.mixer as mixer
@@ -78,7 +79,7 @@ def add_sound(sound="", text="", vol=default_vol, start=0.0, end=0.0, row=-1, co
     else:
         end = 0.0
 
-    new_dict = {"sound": "sounds\\" + sound, "text": text, "volume": vol / 100, "start": start, "end": end, "row": row,
+    new_dict = {"sound": os.path.join("sounds", sound), "text": text, "volume": vol / 100, "start": start, "end": end, "row": row,
                 "col": col}
 
     profile.append(new_dict)
@@ -97,13 +98,17 @@ def play_sound(sel: dict):
 
     mix.set_volume(float(sel["volume"]))
     mix.load(sel["sound"])
+    length = mixer.Sound(sel["sound"]).get_length()
     mix.play()
     mix.set_pos(float(sel["start"]))
     if float(sel["end"]) > 0:
         timer = threading.Timer(float(sel["end"]) - float(sel["start"]), lambda: stop_sound(timer))
+        timer.finished.clear()
         timer.start()
     else:
-        timer = threading.Timer(0, stop_sound)
+        timer = threading.Timer(length, lambda: stop_sound(timer))
+        timer.finished.clear()
+        timer.start()
     return timer
 
 
@@ -111,6 +116,7 @@ def stop_sound(timer: threading.Timer):
     mix.stop()
     if timer is not None:
         timer.cancel()
+    timer.finished.set()
 
 
 def edit_sound(num: int, sound="", text="", vol=-1, start=-1, end=-1, row=-1, col=-1):
@@ -127,7 +133,7 @@ def edit_sound(num: int, sound="", text="", vol=-1, start=-1, end=-1, row=-1, co
             end = input("Input end time (seconds, leave blank for no change): ")
 
         if sound != "":
-            sel.update({"sound": "sounds\\" + sound})
+            sel.update({"sound": os.path.join("sounds", sound)})
         if text != "":
             sel.update({"text": text})
         if vol != "" and vol != -1:
