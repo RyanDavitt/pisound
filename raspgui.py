@@ -129,8 +129,8 @@ class Slot:
 
         def test_play():    # Fix to match same function as start/stop of normal slots
             try:
-                test_profile = [{"sound": os.path.join("sounds", sound.selection_get()), "text": text.get(),
-                                 "img": os.path.join("imgs", img.selection_get()), "volume": vol.get()/100, "start": start.get(),
+                test_profile = [{"sound": sound.selection_get(), "text": text.get(),
+                                 "img": img.selection_get(), "volume": vol.get()/100, "start": start.get(),
                                  "end": end.get(), "row": -1, "col": -1}]
             except tk.TclError:
                 return
@@ -157,12 +157,12 @@ class Slot:
         # Options frame (gridded)(Sound Sel, Image Sel, Name Set)
         opts_frm = ttk.Frame(master=a_s_menu)
         ttk.Label(master=opts_frm, text="Sound File Select:", justify="center").grid(row=0, column=0)
-        soundopts = tk.Variable(master=opts_frm, value=os.listdir("sounds"))
+        soundopts = tk.Variable(master=opts_frm, value=os.listdir(os.path.join("sounds")))
         sound = tk.Listbox(master=opts_frm,  activestyle="dotbox", selectmode="single",
                            listvariable=soundopts, height=3)
         sound.grid(row=0, column=1, padx=padding, pady=padding)
         ttk.Label(master=opts_frm, text="Image File Select (optional):", justify="center").grid(row=1, column=0)
-        imgopts = tk.Variable(master=opts_frm, value=os.listdir("imgs"))
+        imgopts = tk.Variable(master=opts_frm, value=os.listdir(os.path.join("imgs")))
         img = tk.Listbox(master=opts_frm,  activestyle="dotbox", selectmode="single",
                          listvariable=imgopts, height=3)
         img.grid(row=1, column=1, padx=padding, pady=padding)
