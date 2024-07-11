@@ -22,6 +22,7 @@ import time
 import tkinter as tk
 import tkinter.ttk as ttk
 import os
+import platform
 from backend import *
 
 num_slots_w = 7
@@ -227,7 +228,9 @@ def init():
     # window_h = root.winfo_screenheight()
     # window_w = root.winfo_screenwidth()
 
-    # root.attributes("-fullscreen", True)
+    if platform.system() == "Linux":
+        root.attributes("-fullscreen", True)
+
     root.geometry(f"{window_w}x{window_h}")
     root.rowconfigure(0, weight=1, minsize=75)
     for i in range(1, num_slots_h + 1):
@@ -243,7 +246,7 @@ def init():
     return title
 
 
-def populate(profile: list):
+def populate_play(profile: list):
     num_item = 0
     #x = 0
     #y = 1
@@ -277,7 +280,7 @@ def run():
 
     cmd_prmpt_off()
     profile = get_profile()
-    populate(profile)
+    populate_play(profile)
 
     root.mainloop()
 
