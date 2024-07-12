@@ -18,7 +18,7 @@ still playing, and clicking another slot will interrupt and play its own sound (
 while it is playing is subject to change and most likely will eventually become a selectable mode feature). From Play
 Mode, you may access the Add Sound function and Edit Mode.
 """
-import time
+from typing import Callable
 import tkinter as tk
 import tkinter.ttk as ttk
 import os
@@ -31,8 +31,10 @@ window_w = 800
 window_h = 480
 root = tk.Tk()
 
-slot_collection = [[None]*num_slots_h for i in range(num_slots_w)]
 curr_timer = threading.Timer
+
+
+# class Sound_Window:
 
 
 class Slot:
@@ -72,6 +74,9 @@ class Slot:
         self.dur_timer = threading.Thread(target=self.timer_update, args=(curr_timer,))
         self.dur_timer.daemon = True
 
+    def manual_update_button(self, text: str, funct: Callable, args=()):
+        self.button.config(text=text, command=lambda: funct(*args))
+
     def play_stop(self, profile):
         global curr_timer
 
@@ -100,11 +105,12 @@ class Slot:
             stop_sound(curr_timer)
         self.is_playing = not self.is_playing
 
-    def update_button(self, profile):
-        self.button.destroy()
-        self.button = ttk.Button(master=root, text=profile[self.pos]["text"], compound="center",
-                                 command=lambda: self.play_stop(profile))
-        self.button.grid(row=(self.y + 1), column=self.x, sticky="nsew", padx=5, pady=5)
+    def update_play_button(self, profile):
+        # self.button.destroy()
+        # self.button = ttk.Button(master=root, text=profile[self.pos]["text"], compound="center",
+        #                          command=lambda: self.play_stop(profile))
+        self.button.config(text=profile[self.pos]["text"], command=lambda: self.play_stop(profile))
+        # self.button.grid(row=(self.y + 1), column=self.x, sticky="nsew", padx=5, pady=5)
         self.is_sound = True
 
     def gui_add_sound(self):  # Makes an add sound window
@@ -125,7 +131,7 @@ class Slot:
 
             self.pos, profile = add_sound(sound=file, text=text.get(), vol=vol.get(), start=start.get(), end=end.get(),
                                           row=self.y, col=self.x)
-            self.update_button(profile)
+            self.update_play_button(profile)
             a_s_menu.destroy()
 
         def test_play():    # Fix to match same function as start/stop of normal slots
@@ -211,6 +217,10 @@ class Slot:
         self.is_playing = False
 
 
+# Global slot collection 2D list
+slot_collection = [[Slot for i in range(num_slots_h)] for j in range(num_slots_w)]
+
+
 def switch_sounds():
     for i in slot_collection:
         for j in i:
@@ -246,26 +256,44 @@ def init():
     return title
 
 
-def populate_play(profile: list):
+def init_populate(profile: list):
     num_item = 0
+    coords = []
     #x = 0
     #y = 1
-    if not profile:
-        return
-    for i in profile:
-        new_slot = Slot(i["col"], i["row"], num_item, profile)
-        slot_collection[i["col"]][i["row"]] = new_slot
-        num_item = num_item + 1
-        # x = x + 1
-        # if x >= num_slots_w:
-        #     x = 0
-        #     y = y + 1
+    if profile:
+        for i in profile:
+            coords.append([i["col"], i["row"]])
+            new_slot = Slot(coords[num_item][0], coords[num_item][1], num_item, profile)
+            slot_collection[coords[num_item][0]][coords[num_item][1]] = new_slot
+            num_item = num_item + 1
+            # x = x + 1
+            # if x >= num_slots_w:
+            #     x = 0
+            #     y = y + 1
 
     for i in range(num_slots_w):
         for j in range(num_slots_h):
-            if slot_collection[i][j] is None:
+            if [i, j] not in coords:
                 new_slot = Slot(i, j, -1, profile)
                 slot_collection[i][j] = new_slot
+
+
+def play_populate(profile: list):
+    num_item = 0
+    coords = []
+    if profile:
+        for i in profile:
+            coords.append([i["col"], i["row"]])
+            new_slot = slot_collection[coords[num_item][0]][coords[num_item][1]]
+            new_slot.manual_update_button(new_slot, i["text"], new_slot.play_stop, args=(new_slot, profile))
+            num_item = num_item + 1
+
+    for i in range(num_slots_w):
+        for j in range(num_slots_h):
+            if [i, j] not in coords:
+                new_slot = slot_collection[i][j]
+
 
 
 def end_program():
@@ -280,7 +308,7 @@ def run():
 
     cmd_prmpt_off()
     profile = get_profile()
-    populate_play(profile)
+    init_populate(profile)
 
     root.mainloop()
 
