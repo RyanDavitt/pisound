@@ -34,14 +34,11 @@ root = tk.Tk()
 curr_timer = threading.Timer
 
 
-# class Sound_Window:
-
-
 class Slot:
     is_playing = False
     is_sound = False
     pos = -1
-    timer = threading.Timer(0, stop_sound)
+    timer = threading.Timer
     button = None
     x = -1
     y = -1
@@ -51,9 +48,9 @@ class Slot:
 
     def __init__(self, x, y, pos, profile):
         self.pos = pos
-        if self.pos == -1:
+        if self.pos == -1: # "=Add Sound=" button (no edit mode on SoundWindow)
             self.button = ttk.Button(master=root, text="=Add Sound=", compound="center",
-                                     command=self.gui_add_sound)
+                                     command=lambda: SoundWindow(self, False))
             self.is_sound = False
         else:
             self.button = ttk.Button(master=root, text=profile[self.pos]["text"], compound="center",
@@ -62,6 +59,7 @@ class Slot:
         self.button.grid(row=(y + 1), column=x, sticky="nsew", padx=5, pady=5)
         self.x = x
         self.y = y
+        self.timer = threading.Timer(0.0, self.play_stop)
 
     def timer_update(self, timer: threading.Timer):
         while self.timer_run:
@@ -113,108 +111,122 @@ class Slot:
         # self.button.grid(row=(self.y + 1), column=self.x, sticky="nsew", padx=5, pady=5)
         self.is_sound = True
 
-    def gui_add_sound(self):  # Makes an add sound window
-        a_s_menu = tk.Toplevel(master=root)
-        start = tk.DoubleVar(master=a_s_menu, value=0.0)
-        end = tk.DoubleVar(master=a_s_menu, value=0.0)
+    def stop(self):
+        if self.timer.is_alive():
+            self.timer.cancel()
+        self.is_playing = False
 
-        def discard():
-            self.is_sound = False
-            a_s_menu.destroy()
 
-        def save():
-            try:
-                file = sound.selection_get()
-            except tk.TclError:
-                a_s_menu.destroy()
-                return
+class SoundWindow:
+    a_s_menu = tk.Toplevel
+    change_slot = Slot
+    padding = 2
+    sound = tk.Listbox
+    img = tk.Listbox
+    text = tk.StringVar
+    vol = tk.IntVar
+    start = tk.DoubleVar
+    end = tk.DoubleVar
 
-            self.pos, profile = add_sound(sound=file, text=text.get(), vol=vol.get(), start=start.get(), end=end.get(),
-                                          row=self.y, col=self.x)
-            self.update_play_button(profile)
-            a_s_menu.destroy()
-
-        def test_play():    # Fix to match same function as start/stop of normal slots
-            try:
-                test_profile = [{"sound": sound.selection_get(), "text": text.get(),
-                                 "img": img.selection_get(), "volume": vol.get()/100, "start": start.get(),
-                                 "end": end.get(), "row": -1, "col": -1}]
-            except tk.TclError:
-                return
-
-            self.play_stop(test_profile)
-
-        padding = 2
-
-        # Init (packed)
-        self.is_sound = True # Temporarily is_sound = True to allow for test-playing
-        a_s_menu.geometry(f"{int(window_w / 1.5)}x{int(window_h / 1.25)}")
-        a_s_menu.title("Add Sound")
-        a_s_menu.focus()
-        top_frm = ttk.Frame(master=a_s_menu)
+    def __init__(self, slot: Slot, edit_mode: bool):
+        self.a_s_menu = tk.Toplevel(master=root)
+        self.change_slot = slot
+        self.change_slot.is_sound = True  # Temporarily is_sound = True to allow for test-playing
+        self.a_s_menu.geometry(f"{int(window_w / 1.5)}x{int(window_h / 1.25)}")
+        self.a_s_menu.title("Add Sound")
+        self.a_s_menu.focus()
+        top_frm = ttk.Frame(master=self.a_s_menu)
         main_label = ttk.Label(master=top_frm, text="Add Sound", anchor="center", justify="center",
                                font="-family Courier -size 24 -weight bold")
-        discard_button = ttk.Button(master=top_frm, text="Discard", command=discard)
-        save_button = ttk.Button(master=top_frm, text="Save and Exit", command=save)
+        discard_button = ttk.Button(master=top_frm, text="Discard", command=self.discard)
+        save_button = ttk.Button(master=top_frm, text="Save and Exit", command=self.save)
         top_frm.pack()
         main_label.pack_configure(side="top")
         discard_button.pack_configure(side="left")
         save_button.pack_configure(side="right")
 
         # Options frame (gridded)(Sound Sel, Image Sel, Name Set)
-        opts_frm = ttk.Frame(master=a_s_menu)
+        opts_frm = ttk.Frame(master=self.a_s_menu)
         ttk.Label(master=opts_frm, text="Sound File Select:", justify="center").grid(row=0, column=0)
         soundopts = tk.Variable(master=opts_frm, value=os.listdir(os.path.join("sounds")))
-        sound = tk.Listbox(master=opts_frm,  activestyle="dotbox", selectmode="single",
-                           listvariable=soundopts, height=3)
-        sound.grid(row=0, column=1, padx=padding, pady=padding)
+        self.sound = tk.Listbox(master=opts_frm, activestyle="dotbox", selectmode="single",
+                                listvariable=soundopts, height=3)
+        self.sound.grid(row=0, column=1, padx=self.padding, pady=self.padding)
         ttk.Label(master=opts_frm, text="Image File Select (optional):", justify="center").grid(row=1, column=0)
         imgopts = tk.Variable(master=opts_frm, value=os.listdir(os.path.join("imgs")))
-        img = tk.Listbox(master=opts_frm,  activestyle="dotbox", selectmode="single",
-                         listvariable=imgopts, height=3)
-        img.grid(row=1, column=1, padx=padding, pady=padding)
+        self.img = tk.Listbox(master=opts_frm, activestyle="dotbox", selectmode="single",
+                              listvariable=imgopts, height=3)
+        self.img.grid(row=1, column=1, padx=self.padding, pady=self.padding)
         ttk.Label(master=opts_frm, text="Set Sound Name:", justify="center").grid(row=2, column=0)
-        text = tk.StringVar(master=opts_frm, name="Sound Name")
-        ttk.Entry(master=opts_frm, justify="left", textvariable=text).grid(row=2, column=1, padx=padding, pady=padding)
+        self.text = tk.StringVar(master=opts_frm, name="Sound Name")
+        ttk.Entry(master=opts_frm, justify="left", textvariable=self.text).grid(row=2, column=1, padx=self.padding,
+                                                                                pady=self.padding)
         opts_frm.pack()
 
-        def validate_end(num: str):
-            if num == "":
-                return True
-            decim = num.find(".")
-            if (num[0: decim].isdigit() or 0 == decim) and (num[decim + 1:].isdigit() or len(num) - 1 == decim) or num.isdigit():
-                try:
-                    if float(num) > update_bounds(os.path.join("sounds", sound.selection_get())):
-                        return False
-                    else:
-                        return True
-                except tk.TclError:
-                    return False
-            else:
-                return False
-
-        valid_end = a_s_menu.register(validate_end)
+        valid_end = self.a_s_menu.register(self.validate_end)
         # Volume Set (packed)
-        ttk.Label(master=a_s_menu, text="Set Volume:", justify="center").pack()
-        vol = tk.IntVar(master=a_s_menu, name="Volume")
-        ttk.LabeledScale(master=a_s_menu, to=100, from_=0, variable=vol).pack_configure(padx=padding, pady=padding)
-        vol.set(25)
+        ttk.Label(master=self.a_s_menu, text="Set Volume:", justify="center").pack()
+        self.vol = tk.IntVar(master=self.a_s_menu, name="Volume")
+        ttk.LabeledScale(master=self.a_s_menu, to=100, from_=0, variable=self.vol).pack_configure(padx=self.padding,
+                                                                                                  pady=self.padding)
+        self.vol.set(25)
 
         # Bounds Frame (gridded)(Start Set, End Set)
-        bound_frm = ttk.Frame(master=a_s_menu)
+        bound_frm = ttk.Frame(master=self.a_s_menu)
+        self.start = tk.DoubleVar(master=self.a_s_menu, value=0.0)
+        self.end = tk.DoubleVar(master=self.a_s_menu, value=0.0)
         ttk.Label(master=bound_frm, text="Set Start Second Value:", justify="right").grid(row=0, column=0)
         ttk.Label(master=bound_frm, text="Set End Second Value:", justify="right").grid(row=1, column=0)
-        ttk.Entry(master=bound_frm, textvariable=start).grid(row=0, column=1)
-        ttk.Entry(master=bound_frm, textvariable=end, validate="key", validatecommand=(valid_end, "%P")).grid(row=1, column=1)
+        ttk.Entry(master=bound_frm, textvariable=self.start).grid(row=0, column=1)
+        ttk.Entry(master=bound_frm, textvariable=self.end, validate="key",
+                  validatecommand=(valid_end, "%P")).grid(row=1, column=1)
         bound_frm.pack()
 
-        ttk.Button(master=a_s_menu, text="Test Play/Stop Sound", command=test_play).pack()
-        ttk.Label(master=a_s_menu, textvariable=self.dur).pack()
+        ttk.Button(master=self.a_s_menu, text="Test Play/Stop Sound", command=self.test_play).pack()
+        ttk.Label(master=self.a_s_menu, textvariable=self.change_slot.dur).pack()
 
-    def stop(self):
-        if self.timer.is_alive():
-            self.timer.cancel()
-        self.is_playing = False
+    def discard(self):
+        self.change_slot.is_sound = False
+        self.a_s_menu.destroy()
+
+    def save(self):
+        try:
+            file = self.sound.selection_get()
+        except tk.TclError:
+            self.a_s_menu.destroy()
+            return
+
+        self.change_slot.pos, profile = add_sound(sound=file, text=self.text.get(), vol=self.vol.get(),
+                                                  start=self.start.get(), end=self.end.get(), row=self.change_slot.y,
+                                                  col=self.change_slot.x)
+        self.change_slot.update_play_button(profile)
+        self.a_s_menu.destroy()
+
+    def test_play(self):  # Fix to match same function as start/stop of normal slots
+        try:
+            test_profile = [{"sound": self.sound.selection_get(), "text": self.text.get(),
+                             "img": self.img.selection_get(), "volume": self.vol.get() / 100, "start": self.start.get(),
+                             "end": self.end.get(), "row": -1, "col": -1}]
+        except tk.TclError:
+            return
+
+        self.change_slot.play_stop(test_profile)
+
+    def validate_end(self, num: str):
+        if num == "":
+            return True
+        decim = num.find(".")
+        if (num[0: decim].isdigit() or 0 == decim) and (
+                num[decim + 1:].isdigit() or len(num) - 1 == decim) or num.isdigit():
+            try:
+                if float(num) > update_bounds(os.path.join("sounds", self.sound.selection_get())):
+                    return False
+                else:
+                    return True
+            except tk.TclError:
+                return False
+        else:
+            return False
 
 
 # Global slot collection 2D list
